@@ -1,0 +1,8 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {places,recommend,planSummary,mapsUrl} from '../dist/engine.js';
+const defaults={area:'any',hours:3,budget:60,pace:'balanced'};
+test('rainy indoor intent never returns outdoor or covered-only hawkers',()=>{const {results}=recommend('rainy day indoors with kids',defaults);assert.ok(results.length);assert.ok(results.every(p=>p.tags.includes('indoor')));assert.ok(!results.some(p=>p.id==='maxwell'));});
+test('hard free budget and neighborhood constraints stay intact',()=>{const {results}=recommend('free nature near Marina Bay',defaults);assert.ok(results.length);assert.ok(results.every(p=>p.cost===0&&p.area==='marina'));});
+test('impossible constraints return no results instead of silently relaxing',()=>{const {results}=recommend('indoors',{...defaults,area:'sentosa',budget:0});assert.equal(results.length,0);});
+test('full plan total includes all visits and only intervening transfers',()=>{const ids=['maxwell','chinatown'];const s=planSummary(ids);assert.equal(s.minutes,125);assert.equal(s.cost,12);assert.deepEqual(planSummary([]),{minutes:0,cost:0});});
+test('routes are official Google Maps URLs with encoded destination',()=>{const u=new URL(mapsUrl(places[0],'transit'));assert.equal(u.hostname,'www.google.com');assert.equal(u.searchParams.get('travelmode'),'transit');assert.ok(u.searchParams.get('destination').endsWith('Singapore'));});
+test('all curated IDs and official links are well formed',()=>{assert.equal(new Set(places.map(p=>p.id)).size,places.length);for(const p of places){assert.equal(new URL(p.url).protocol,'https:');assert.ok(p.minutes>0);assert.ok(p.cost>=0);}});
